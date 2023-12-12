@@ -9,7 +9,7 @@ from mysql.connector import Error
 
 class MovieReviewResource(Resource):
     # 영화 리뷰 화면
-    @jwt_required()
+    @jwt_required(optional=True)
     def get(self):
 
         movieId = request.args.get('movieId')
@@ -20,26 +20,19 @@ class MovieReviewResource(Resource):
         
         try :
             connection = get_connection()
-            query = '''select u.nickname, u.gender, r.rating
-                        from movie m 
-                        left join review r
-                        on m.id = r.movieId
-                        join user u
-                        on r.userId = u.id
-                        where m.id = %s
-                        order by r.createdAt desc
-                        limit '''+str(offset)+''', '''+str(limit)+''';'''
+            query = '''select r.id, u.nickname, r.content, r.rating
+                    from review r
+                    join user u
+                    on r.userId = u.id
+                    where r.movieId = %s
+                    order by r.createdAt desc
+                    limit '''+str(offset)+''', '''+str(limit)+''';'''
             record = (movieId, )
 
             cursor = connection.cursor(dictionary=True)
             cursor.execute(query, record)
 
             result_list = cursor.fetchall()
-
-            i = 0
-            for row in result_list:
-                result_list[i]['rating'] = str(row['rating'])
-                i = i + 1
 
             cursor.close()
             connection.close()
@@ -50,7 +43,9 @@ class MovieReviewResource(Resource):
             connection.close()
             return {"error":str(e)}, 500
         
-        return {"result":"success","items":result_list}, 200
+        return {"result":"success",
+                "items":result_list,
+                "count":len(result_list)}, 200
     
 
     # 영화 리뷰 작성
